@@ -6,7 +6,7 @@ const NativeBridge = process.binding('cordova_bridge');
 /**
  * Built-in events channel to exchange events between the Cordova app
  * and the Node.js app. It allows to emit user defined event types with
- * an optional message.
+ * optional arguments.
  */
 const EVENT_CHANNEL = '_EVENTS_';
 
@@ -25,14 +25,14 @@ const SYSTEM_CHANNEL = '_SYSTEM_';
 class MessageCodec {
   // This is a 'private' constructor, should only be used by this class
   // static methods.
-  constructor(_event, _payload) {
+  constructor(_event, ..._payload) {
     this.event = _event;
     this.payload = JSON.stringify(_payload);
   };
 
   // Serialize the message payload and the message.
-  static serialize(event, payload) {
-    const envelope = new MessageCodec(event, payload);
+  static serialize(event, ...payload) {
+    const envelope = new MessageCodec(event, ...payload);
     // Return the serialized message, that can be sent through a channel.
     return JSON.stringify(envelope);
   };
@@ -40,7 +40,7 @@ class MessageCodec {
   // Deserialize the message and the message payload.
   static deserialize(message) {
     var envelope = JSON.parse(message);
-    if (envelope.payload !== undefined) {
+    if (typeof envelope.payload !== 'undefined') {
       envelope.payload = JSON.parse(envelope.payload);
     }
     return envelope;
@@ -62,41 +62,65 @@ class ChannelSuper extends EventEmitter {
     delete this.emit;
   };
 
-  emitWrapper(type, msg) {
+  emitWrapper(type, ...msg) {
     const _this = this;
     setImmediate( () => {
-      if (msg) {
-        _this.emitLocal(type, msg);
-      } else {
-        _this.emitLocal(type);
-      }
+      _this.emitLocal(type, ...msg);
      });
   };
 };
 
 /**
  * Events channel class that supports user defined event types with
- * an optional message. Allows to send any serializable
+ * optional arguments. Allows to send any serializable
  * JavaScript object supported by 'JSON.stringify()'.
  * Sending functions is not currently supported.
  * Includes the previously available 'send' method for 'message' events.
  */
 class EventChannel extends ChannelSuper {
-  post(event, msg) {
-    NativeBridge.sendMessage(this.name, MessageCodec.serialize(event, msg));
+  post(event, ...msg) {
+    NativeBridge.sendMessage(this.name, MessageCodec.serialize(event, ...msg));
   };
 
   // Posts a 'message' event, to be backward compatible with old code.
-  send(msg) {
-    this.post('message',msg);
+  send(...msg) {
+    this.post('message', ...msg);
   };
 
   processData(data) {
     // The data contains the serialized message envelope.
     var envelope = MessageCodec.deserialize(data);
-    this.emitWrapper(envelope.event, envelope.payload);
+    this.emitWrapper(envelope.event, ...(envelope.payload));
   };
 };
+
+/**
+ * System event Lock class
+ * Helper class to handle lock acquisition and release in system event handlers.
+ * Will call a callback after every lock has been released.
+ **/
+class SystemEventLock {
+  constructor(callback, startingLocks) {
+    this._locksAcquired = startingLocks; // Start with one lock.
+    this._callback = callback; // Callback to call after all locks are released.
+    this._hasReleased = false; // To stop doing anything after it's supposed to serve its purpose.
+    this._checkRelease(); // Initial check. If it's been started with no locks, can be released right away.
+  }
+  // Release a lock and call the callback if all locks have been released.
+  release() {
+    if (this._hasReleased) return;
+    this._locksAcquired--;
+    this._checkRelease();
+  }
+  // Check if the lock can be released and release it.
+  _checkRelease() {
+    if(this._locksAcquired<=0) {
+      this._hasReleased=true;
+      this._callback();
+    }
+  }
+
+}
 
 /**
  * System channel class.
@@ -107,6 +131,34 @@ class SystemChannel extends ChannelSuper {
     super(name);
     // datadir should not change during runtime, so we cache it.
     this._cacheDataDir = null;
+  };
+
+  emitWrapper(type) {
+    // Overload the emitWrapper to handle the pause event locks.
+    const _this = this;
+    if (type.startsWith('pause')) {
+      setImmediate( () => {
+        let releaseMessage = 'release-pause-event';
+        let eventArguments = type.split('|');
+        if (eventArguments.length >= 2) {
+          // The expected format for the release message is "release-pause-event|{eventId}"
+          // eventId comes from the pause event, with the format "pause|{eventId}"
+          releaseMessage = releaseMessage + '|' + eventArguments[1];
+        }
+        // Create a lock to signal the native side after the app event has been handled.
+        let eventLock = new SystemEventLock(
+          () => {
+            NativeBridge.sendMessage(_this.name, releaseMessage);
+          }
+          , _this.listenerCount("pause") // A lock for each current event listener. All listeners need to call release().
+        );
+        _this.emitLocal("pause", eventLock);
+      });
+    } else {
+      setImmediate( () => {
+        _this.emitLocal(type);
+      });
+    }
   };
 
   processData(data) {
@@ -156,6 +208,9 @@ function registerChannel(channel) {
  */
 const systemChannel = new SystemChannel(SYSTEM_CHANNEL);
 registerChannel(systemChannel);
+
+// Signal we are ready for app events, so the native code won't lock before node is ready to handle those.
+NativeBridge.sendMessage(SYSTEM_CHANNEL, "ready-for-app-events");
 
 const eventChannel = new EventChannel(EVENT_CHANNEL);
 registerChannel(eventChannel);
