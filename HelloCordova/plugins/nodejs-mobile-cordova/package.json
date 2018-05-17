@@ -1,0 +1,68 @@
+{
+  "_from": "git+https://github.com/janeasystems/nodejs-mobile-cordova.git#r-staging",
+  "_id": "nodejs-mobile-cordova@0.1.4",
+  "_inBundle": false,
+  "_location": "/nodejs-mobile-cordova",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "git",
+    "raw": "https://github.com/janeasystems/nodejs-mobile-cordova#r-staging",
+    "rawSpec": "https://github.com/janeasystems/nodejs-mobile-cordova#r-staging",
+    "saveSpec": "git+https://github.com/janeasystems/nodejs-mobile-cordova.git#r-staging",
+    "fetchSpec": "https://github.com/janeasystems/nodejs-mobile-cordova.git",
+    "gitCommittish": "r-staging"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "git+https://github.com/janeasystems/nodejs-mobile-cordova.git#9da75bfee287776a9fdd0e2e5c6264a4c4a414b2",
+  "_spec": "https://github.com/janeasystems/nodejs-mobile-cordova#r-staging",
+  "_where": "/Users/chrissobolewski/workspace/nodejs-mobile-cordova/HelloCordova",
+  "author": {
+    "name": "janeasystems"
+  },
+  "bugs": {
+    "url": "https://github.com/janeasystems/nodejs-mobile/issues"
+  },
+  "bundleDependencies": false,
+  "cordova": {
+    "id": "nodejs-mobile-cordova",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "dependencies": {
+    "nodejs-mobile-gyp": "^0.1.0",
+    "tar.gz2": "^1.0.0"
+  },
+  "deprecated": false,
+  "description": "Node.js for Mobile Apps Cordova plugin",
+  "engines": {
+    "cordovaDependencies": {
+      ">=0.1.0": {
+        "cordova-android": ">=6.2.1",
+        "cordova-ios": ">=4.4.0"
+      }
+    }
+  },
+  "homepage": "https://code.janeasystems.com/nodejs-mobile",
+  "keywords": [
+    "cordova",
+    "mobile",
+    "nodejs",
+    "node.js",
+    "nodejs-mobile",
+    "ecosystem:cordova",
+    "cordova-ios",
+    "cordova-android"
+  ],
+  "license": "MIT",
+  "name": "nodejs-mobile-cordova",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/janeasystems/nodejs-mobile-cordova.git"
+  },
+  "version": "0.1.4"
+}
